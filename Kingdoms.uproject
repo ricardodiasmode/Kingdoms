@@ -1,0 +1,18 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "{EBBDF4E0-4379-E241-1F8E-B5811F34EB5D}",
+	"Category": "",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "Kingdoms",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"UMG",
+				"Engine",
+				"AIModule"
+			]
+		}
+	]
+}
