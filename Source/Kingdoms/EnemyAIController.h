@@ -14,4 +14,8 @@ class KINGDOMS_API AEnemyAIController : public AAIController
 {
 	GENERATED_BODY()
 	
+public:
+	UFUNCTION(BlueprintImplementableEvent)
+	void SetCanAttack(const bool CanAttack);
+
 };

@@ -21,6 +21,7 @@ void AKingdomsCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AKingdomsCharacter, IsMoving);
+	DOREPLIFETIME(AKingdomsCharacter, CurrentExperience);
 }
 
 AKingdomsCharacter::AKingdomsCharacter()
@@ -66,6 +67,24 @@ AKingdomsCharacter::AKingdomsCharacter()
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
+
+	// Creating widget component that holds mana and life
+	StatusWidget = CreateDefaultSubobject<UWidgetComponent>("StatusBar");
+	StatusWidget->SetupAttachment(RootComponent);
+	static ConstructorHelpers::FClassFinder<UUserWidget> StatusWidgetClass(TEXT("/Game/UI/BP_StatusBar"));
+	if (StatusWidgetClass.Class != nullptr)
+	{
+		StatusWidget->SetWidgetClass(StatusWidgetClass.Class);
+	}
+
+	// Creating widget component that holds experience
+	ExperienceWidget = CreateDefaultSubobject<UWidgetComponent>("ExperienceBar");
+	ExperienceWidget->SetupAttachment(RootComponent);
+	static ConstructorHelpers::FClassFinder<UUserWidget> ExperienceWidgetClass(TEXT("/Game/UI/BP_ExperienceBar"));
+	if (ExperienceWidgetClass.Class != nullptr)
+	{
+		ExperienceWidget->SetWidgetClass(ExperienceWidgetClass.Class);
+	}
 }
 
 void AKingdomsCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
@@ -259,11 +278,47 @@ void AKingdomsCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	SetAttackRange();
+	CurrentLife = MaxLife;
+	CurrentMana = MaxMana;
+
+	StatusWidget->SetRelativeLocation(FVector(0.0f, 0.0f, 120.0f));
+	StatusWidgetRef = Cast< UStatusBar >(StatusWidget->GetUserWidgetObject());
+	
+	ExperienceWidget->SetRelativeLocation(FVector(0.0f, 0.0f, 90.0f));
+	ExperienceWidgetRef = Cast< UExperienceBar >(ExperienceWidget->GetUserWidgetObject());
+}
+
+void AKingdomsCharacter::AddExperience(int ExperienceToAdd)
+{
+	CurrentExperience += ExperienceToAdd;
+	// Check if player reach the required experience to upgrade
+	while(CurrentExperience >= RequiredExperienceToUp)
+	{
+		// Upgrading level
+		CurrentLevel++;
+		CurrentExperience -= RequiredExperienceToUp;
+		// Increase required experience to upgrade
+		RequiredExperienceToUp = 1 + pow(CurrentLevel, 2);
+	}
+	// Setting current exp on experience widget
+	if (ExperienceWidgetRef)
+	{
+		ExperienceWidgetRef->SetCurrentLevel(CurrentLevel);
+		ExperienceWidgetRef->SetCurrentExperience((float)CurrentExperience / (float)RequiredExperienceToUp);
+	}
 }
 
 void AKingdomsCharacter::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
+
+	// Setting current life on status widget
+	if (StatusWidgetRef)
+	{
+		StatusWidgetRef->SetCurrentLife(GetCurrentLife() / MaxLife);
+		StatusWidgetRef->SetCurrentMana(GetCurrentMana() / MaxMana);
+
+	}
 
 	if (CursorToWorld != nullptr)
 	{
@@ -331,7 +386,12 @@ void AKingdomsCharacter::HitEnemy()
 			// Checking if target is in range with a 50uu spare
 			FVector DistanceToTarget = NPCToHit->GetActorLocation() - GetActorLocation();
 			if(DistanceToTarget.Size() <= AttackRange*100 + 50)
-				NPCToHit->LoseLife(GetCurrentBaseDamage());
+				NPCToHit->LoseLife(GetCurrentBaseDamage(), this);
 		}
 	}
+}
+
+void AKingdomsCharacter::RecieveDamage(float DamageToRecieve)
+{
+	CurrentLife -= DamageToRecieve;
 }

@@ -37,7 +37,10 @@ void ABaseEnemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	if (StatusWidgetRef)
+	{
 		StatusWidgetRef->SetCurrentLife(GetCurrentLife() / MaxLife);
+		StatusWidgetRef->SetCurrentMana(GetCurrentMana() / MaxMana);
+	}
 }
 
 // Called to bind functionality to input
@@ -45,6 +48,8 @@ void ABaseEnemy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 }
+
+#pragma region MoveSystem
 
 void ABaseEnemy::SetTimerToChasePlayer(AKingdomsCharacter* CharacterRef)
 {
@@ -96,9 +101,6 @@ FVector ABaseEnemy::MoveDownUp(FVector LastQuadLocation, FVector FrontVector, bo
 	{
 		if (!(World->LineTraceSingleByChannel(HitResult, StartLocation, UpLocation, ECC_Visibility, Params)))
 		{
-			//FVector MyLocation = GetActorLocation();
-			//UE_LOG(LogTemp, Warning, TEXT("Up Location: %s xx My Location: %s"), *(UpLocation.ToString()), *(MyLocation.ToString()));
-			//return FVector(0, 0, -9999);
 			return FindWayToCharacterOrQuad(UpLocation, TargetIsCharacter);
 		}
 	}
@@ -106,9 +108,6 @@ FVector ABaseEnemy::MoveDownUp(FVector LastQuadLocation, FVector FrontVector, bo
 	{
 		if (!(World->LineTraceSingleByChannel(HitResult, StartLocation, DownLocation, ECC_Visibility, Params)))
 		{
-			//FVector MyLocation = GetActorLocation();
-			//UE_LOG(LogTemp, Warning, TEXT("Down Location: %s xx My Location: %s"), *(DownLocation.ToString()), *(MyLocation.ToString()));
-			//return FVector(0, 0, -9999);
 			return FindWayToCharacterOrQuad(DownLocation, TargetIsCharacter);
 		}
 	}
@@ -118,17 +117,11 @@ FVector ABaseEnemy::MoveDownUp(FVector LastQuadLocation, FVector FrontVector, bo
 		// If right is the fastest way, try right
 		if (!(World->LineTraceSingleByChannel(HitResult, StartLocation, RightLocation, ECC_Visibility, Params)))
 		{
-			//FVector MyLocation = GetActorLocation();
-			//UE_LOG(LogTemp, Warning, TEXT("RightLocation: %s xx My Location: %s"), *(RightLocation.ToString()), *(MyLocation.ToString()));
-			//return FVector(0, 0, -9999);
 			return FindWayToCharacterOrQuad(RightLocation, TargetIsCharacter);
 		}
 		// Right is blocked so try left
 		else if (!(World->LineTraceSingleByChannel(HitResult, StartLocation, LeftLocation, ECC_Visibility, Params)))
 		{
-			//FVector MyLocation = GetActorLocation();
-			//UE_LOG(LogTemp, Warning, TEXT("LeftLocation: %s xx My Location: %s"), *(LeftLocation.ToString()), *(MyLocation.ToString()));
-			//return FVector(0, 0, -9999);
 			return FindWayToCharacterOrQuad(LeftLocation, TargetIsCharacter);
 		}
 	}
@@ -137,17 +130,11 @@ FVector ABaseEnemy::MoveDownUp(FVector LastQuadLocation, FVector FrontVector, bo
 		// If left is the fastest way, try left
 		if (!(World->LineTraceSingleByChannel(HitResult, StartLocation, LeftLocation, ECC_Visibility, Params)))
 		{
-			//FVector MyLocation = GetActorLocation();
-			//UE_LOG(LogTemp, Warning, TEXT("LeftLocation: %s xx My Location: %s"), *(LeftLocation.ToString()), *(MyLocation.ToString()));
-			//return FVector(0, 0, -9999);
 			return FindWayToCharacterOrQuad(LeftLocation, TargetIsCharacter);
 		}
 		// Left is blocked so try right
 		if (!(World->LineTraceSingleByChannel(HitResult, StartLocation, RightLocation, ECC_Visibility, Params)))
 		{
-			//FVector MyLocation = GetActorLocation();
-			//UE_LOG(LogTemp, Warning, TEXT("RightLocation: %s xx My Location: %s"), *(RightLocation.ToString()), *(MyLocation.ToString()));
-			//return FVector(0, 0, -9999);
 			return FindWayToCharacterOrQuad(RightLocation, TargetIsCharacter);
 		}
 	}
@@ -156,9 +143,6 @@ FVector ABaseEnemy::MoveDownUp(FVector LastQuadLocation, FVector FrontVector, bo
 	{
 		if (!(World->LineTraceSingleByChannel(HitResult, StartLocation, UpLocation, ECC_Visibility, Params)))
 		{
-			//FVector MyLocation = GetActorLocation();
-			//UE_LOG(LogTemp, Warning, TEXT("Up Location: %s xx My Location: %s"), *(UpLocation.ToString()), *(MyLocation.ToString()));
-			//return FVector(0, 0, -9999);
 			return FindWayToCharacterOrQuad(UpLocation, TargetIsCharacter);
 		}
 	}
@@ -166,9 +150,6 @@ FVector ABaseEnemy::MoveDownUp(FVector LastQuadLocation, FVector FrontVector, bo
 	{
 		if (!(World->LineTraceSingleByChannel(HitResult, StartLocation, DownLocation, ECC_Visibility, Params)))
 		{
-			//FVector MyLocation = GetActorLocation();
-			//UE_LOG(LogTemp, Warning, TEXT("Down Location: %s xx My Location: %s"), *(DownLocation.ToString()), *(MyLocation.ToString()));
-			//return FVector(0, 0, -9999);
 			return FindWayToCharacterOrQuad(DownLocation, TargetIsCharacter);
 		}
 	}
@@ -199,8 +180,6 @@ FVector ABaseEnemy::MoveLeftRight(FVector LastQuadLocation, FVector FrontVector,
 	{
 		if (!(World->LineTraceSingleByChannel(HitResult, StartLocation, RightLocation, ECC_Visibility, Params)))
 		{
-			//FVector MyLocation = GetActorLocation();
-			//return FVector(0, 0, -9999);
 			return FindWayToCharacterOrQuad(RightLocation, TargetIsCharacter);
 		}
 	}
@@ -208,9 +187,6 @@ FVector ABaseEnemy::MoveLeftRight(FVector LastQuadLocation, FVector FrontVector,
 	{
 		if (!(World->LineTraceSingleByChannel(HitResult, StartLocation, LeftLocation, ECC_Visibility, Params)))
 		{
-			//FVector MyLocation = GetActorLocation();
-			//UE_LOG(LogTemp, Warning, TEXT("LeftLocation: %s xx My Location: %s"), *(LeftLocation.ToString()), *(MyLocation.ToString()));
-			//return FVector(0, 0, -9999);
 			return FindWayToCharacterOrQuad(LeftLocation, TargetIsCharacter);
 		}
 	}
@@ -220,17 +196,11 @@ FVector ABaseEnemy::MoveLeftRight(FVector LastQuadLocation, FVector FrontVector,
 		// If up is the fastest way, try up
 		if (!(World->LineTraceSingleByChannel(HitResult, StartLocation, UpLocation, ECC_Visibility, Params)))
 		{
-			//FVector MyLocation = GetActorLocation();
-			//UE_LOG(LogTemp, Warning, TEXT("UpLocation: %s xx My Location: %s"), *(UpLocation.ToString()), *(MyLocation.ToString()));
-			//return FVector(0, 0, -9999);
 			return FindWayToCharacterOrQuad(UpLocation, TargetIsCharacter);
 		}
 		// up is blocked so try down
 		else if (!(World->LineTraceSingleByChannel(HitResult, StartLocation, DownLocation, ECC_Visibility, Params)))
 		{
-			//FVector MyLocation = GetActorLocation();
-			//UE_LOG(LogTemp, Warning, TEXT("DownLocation: %s xx My Location: %s"), *(DownLocation.ToString()), *(MyLocation.ToString()));
-			//return FVector(0, 0, -9999);
 			return FindWayToCharacterOrQuad(DownLocation, TargetIsCharacter);
 		}
 	}
@@ -239,17 +209,11 @@ FVector ABaseEnemy::MoveLeftRight(FVector LastQuadLocation, FVector FrontVector,
 		// If down is the fastest way, try down
 		if (!(World->LineTraceSingleByChannel(HitResult, StartLocation, DownLocation, ECC_Visibility, Params)))
 		{
-			//FVector MyLocation = GetActorLocation();
-			//UE_LOG(LogTemp, Warning, TEXT("DownLocation: %s xx My Location: %s"), *(DownLocation.ToString()), *(MyLocation.ToString()));
-			//return FVector(0, 0, -9999);
 			return FindWayToCharacterOrQuad(DownLocation, TargetIsCharacter);
 		}
 		// Down is blocked so try up
 		if (!(World->LineTraceSingleByChannel(HitResult, StartLocation, UpLocation, ECC_Visibility, Params)))
 		{
-			//FVector MyLocation = GetActorLocation();
-			//UE_LOG(LogTemp, Warning, TEXT("UpLocation: %s xx My Location: %s"), *(UpLocation.ToString()), *(MyLocation.ToString()));
-			//return FVector(0, 0, -9999);
 			return FindWayToCharacterOrQuad(UpLocation, TargetIsCharacter);
 		}
 	}
@@ -258,9 +222,6 @@ FVector ABaseEnemy::MoveLeftRight(FVector LastQuadLocation, FVector FrontVector,
 	{
 		if (!(World->LineTraceSingleByChannel(HitResult, StartLocation, LeftLocation, ECC_Visibility, Params)))
 		{
-			//FVector MyLocation = GetActorLocation();
-			//UE_LOG(LogTemp, Warning, TEXT("LeftLocation: %s xx My Location: %s"), *(LeftLocation.ToString()), *(MyLocation.ToString()));
-			//return FVector(0, 0, -9999);
 			return FindWayToCharacterOrQuad(LeftLocation, TargetIsCharacter);
 		}
 	}
@@ -268,9 +229,6 @@ FVector ABaseEnemy::MoveLeftRight(FVector LastQuadLocation, FVector FrontVector,
 	{
 		if (!(World->LineTraceSingleByChannel(HitResult, StartLocation, RightLocation, ECC_Visibility, Params)))
 		{
-			//FVector MyLocation = GetActorLocation();
-			//UE_LOG(LogTemp, Warning, TEXT("RightLocation: %s xx My Location: %s"), *(RightLocation.ToString()), *(MyLocation.ToString()));
-			//return FVector(0, 0, -9999);
 			return FindWayToCharacterOrQuad(RightLocation, TargetIsCharacter);
 		}
 	}
@@ -280,16 +238,26 @@ FVector ABaseEnemy::MoveLeftRight(FVector LastQuadLocation, FVector FrontVector,
 
 FVector ABaseEnemy::FindWayToCharacterOrQuad(FVector LastQuadLocation, bool TargetIsCharacter)
 {
-	UE_LOG(LogTemp, Warning, TEXT("LastQuadLocation: %s xx My Location: %s xx CharacterLocation: %s"), *(LastQuadLocation.ToString()), *(GetActorLocation().ToString()), *(CharacterToChase->GetActorLocation().ToString()));
-	
 	#pragma region Check if is not too far and check the stop condition
 	// Checking if i still close to character(it means i do not ran away tring to reach him) and if i ain't return NULL
 	if (TargetIsCharacter)
 	{
 		if (CharacterToChase)
 		{
+			// Check if i am too far
 			if (FVector(CharacterToChase->GetActorLocation() - LastQuadLocation).Size() > 3500 || FVector(CharacterToChase->GetActorLocation() - GetActorLocation()).Size() > 3500.f)
 				return FVector(0, 0, -9999);
+			// Check if i am too close
+			if (FVector(CharacterToChase->GetActorLocation() - GetActorLocation()).Size() < 125)
+			{
+				// If i am too close tell controller that i can attack and stop moving
+				if (AAIController* MyAIController = Cast<AAIController>(GetController()))
+				{
+					if (AEnemyAIController* MyController = Cast< AEnemyAIController >(MyAIController))
+						MyController->SetCanAttack(true);
+				}
+				return FVector(0, 0, -9999);
+			}
 		}
 	}
 	// Checking if the current location is a quad by my side which means that finally found the quad
@@ -431,6 +399,26 @@ void ABaseEnemy::MoveToSpawnDirection()
 	}
 }
 
+#pragma endregion
+
+bool ABaseEnemy::HitCharacter()
+{
+	if (CharacterToChase)
+	{
+		if (FVector(CharacterToChase->GetActorLocation() - GetActorLocation()).Size() > 150)
+		{
+			if (AAIController* MyAIController = Cast<AAIController>(GetController()))
+			{
+				if (AEnemyAIController* MyController = Cast< AEnemyAIController >(MyAIController))
+					MyController->SetCanAttack(false);
+			}
+			return false;
+		}
+		CharacterToChase->RecieveDamage(BaseDamage);
+	}
+	return true;
+}
+
 bool ABaseEnemy::OnBeingClicked()
 {
 	AmISelected = (AmISelected) ? false : true;
@@ -458,21 +446,28 @@ void ABaseEnemy::ChangeMaterials(bool IsSelected)
 	}
 }
 
-void ABaseEnemy::LoseLife(const float Damage)
+void ABaseEnemy::LoseLife(const float Damage, AKingdomsCharacter* AgressiveCharacter)
 {
 	SetCurrentLife(GetCurrentLife() - Damage);
-	CheckShouldDie();
+	if (AgressiveCharacter)
+		CheckShouldDie(AgressiveCharacter);
+	else
+		CheckShouldDie(nullptr);
 }
 
-void ABaseEnemy::CheckShouldDie()
+void ABaseEnemy::CheckShouldDie(AKingdomsCharacter* AgressiveCharacter)
 {
 	if (GetCurrentLife() <= 0)
 	{
-		Server_DestroyMe();
+		if (AgressiveCharacter)
+			Server_DestroyMe(AgressiveCharacter);
+		else
+			Server_DestroyMe(nullptr);
 	}
 }
 
-void ABaseEnemy::Server_DestroyMe_Implementation()
+void ABaseEnemy::Server_DestroyMe_Implementation(AKingdomsCharacter* AgressiveCharacter)
 {
+	AgressiveCharacter->AddExperience(ExperienceValue);
 	Destroy();
 }

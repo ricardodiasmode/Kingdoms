@@ -33,7 +33,6 @@ private:
 	// Location above of the quad to move
 	FVector QuadToMove;
 
-
 protected:
 	UPROPERTY(EditAnywhere)
 	TArray<UMaterialInstance*> SelectedMaterials;
@@ -45,6 +44,12 @@ protected:
 	UPROPERTY(EditAnywhere)
 	float MaxMana = 100.f;
 
+	UPROPERTY(EditAnywhere)
+	float BaseDamage = 10.f;
+
+	UPROPERTY(EditAnywhere)
+	int ExperienceValue = 1;
+
 	UPROPERTY(BlueprintReadWrite)
 	FVector InitialSpawnLocation;
 
@@ -52,16 +57,16 @@ protected:
 
 //// Methods ////
 private:
-
-	void CheckShouldDie();
+	void CheckShouldDie(AKingdomsCharacter* AgressiveCharacter);
 
 	UFUNCTION(Server, reliable)
-	void Server_DestroyMe();
+	void Server_DestroyMe(AKingdomsCharacter* AgressiveCharacter);
 
 	// Recursive function that find from character to this enemy a avaliable path and return the first quad to this path
 	FVector FindWayToCharacterOrQuad(FVector LastQuadLocation, bool TargetIsCharacter);
 	FVector MoveDownUp(FVector LastQuadLocation, FVector FrontVector, bool TargetIsCharacter);
 	FVector MoveLeftRight(FVector LastQuadLocation, FVector FrontVector, bool TargetIsCharacter);
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -69,6 +74,11 @@ protected:
 public:
 	// Sets default values for this character's properties
 	ABaseEnemy();
+
+	// Called when close to character
+	UFUNCTION(BlueprintCallable)
+	virtual bool HitCharacter();
+	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
@@ -85,7 +95,7 @@ public:
 	*/
 	void ChangeMaterials(bool IsSelected);
 
-	void LoseLife(const float Damage);
+	void LoseLife(const float Damage, AKingdomsCharacter* AgressiveCharacter);
 
 	/* Function called by BTT to start to chase a player
 	*/
@@ -108,6 +118,7 @@ public:
 
 	void SetCurrentLife(const float LifeToSet) { CurrentLife = (LifeToSet < 0) ? 0 : LifeToSet; }
 	FORCEINLINE float GetCurrentLife() { return CurrentLife; }
+	FORCEINLINE float GetCurrentMana() { return CurrentMana; }
 	
 	UFUNCTION(BlueprintPure)
 	FORCEINLINE bool IsMoving() const { return GetWorldTimerManager().IsTimerActive(MoveTimer); }

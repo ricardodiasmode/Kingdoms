@@ -6,6 +6,9 @@
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/InputSettings.h"
 #include "FunctionLibrary.h"
+#include "Components/WidgetComponent.h"
+#include "StatusBar.h"
+#include "ExperienceBar.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -16,14 +19,38 @@ class AKingdomsCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
+private:
+	//// Components ////
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Widget, meta = (AllowPrivateAccess = "true"))
+	UWidgetComponent* StatusWidget;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Widget, meta = (AllowPrivateAccess = "true"))
+	UWidgetComponent* ExperienceWidget;
+
 	//// Variables ////
 private:
-	// Character base move speed. The greater? it is, the faster the character moves.
+	// Character base move speed. The greater? it is, the faster the character moves
 	float CurrentMoveSpeed = 1.f;
-	// Character base attack speed. The lower it is, the faster the character hits.
+	// Character base attack speed. The lower it is, the faster the character hits
 	float CurrentAttackSpeed = 1.f;
 	// Character base attack range. Based in squares (1 means 100uu)
 	float AttackRange = 1.f;
+	// Character current experience to upgrade the hero stats
+	UPROPERTY(Replicated)
+	int CurrentExperience = 0;
+	UPROPERTY(Replicated)
+	int RequiredExperienceToUp = 1 + pow(CurrentLevel,2);
+	// Character current level
+	UPROPERTY(Replicated)
+	int CurrentLevel = 1;
+
+	UPROPERTY(EditAnywhere)
+	float MaxLife = 100.f;
+	UPROPERTY(EditAnywhere)
+	float MaxMana = 100.f;
+
+	float CurrentLife;
+	float CurrentMana;
 
 	FTimerHandle HitEnemyTimer;
 	// Function that hits the enemy called by server
@@ -43,6 +70,8 @@ protected:
 	// Variable readed and setted by server to be used in the HitEnemy method using timer.
 	class ACharacter* CurrentlyHittedEnemy;
 
+	UStatusBar* StatusWidgetRef;
+	UExperienceBar* ExperienceWidgetRef;
 public:
 	UPROPERTY(BlueprintReadOnly, Replicated)
 	bool IsMoving;
@@ -71,10 +100,15 @@ private:
 
 public:
 
+	void RecieveDamage(float DamageToRecieve);
+	void AddExperience(int ExperienceToAdd);
+
+	FORCEINLINE float GetCurrentMana() const { return CurrentMana; }
+	FORCEINLINE float GetCurrentLife() const { return CurrentLife; }
 	FORCEINLINE float GetCurrentMoveSpeed() const { return CurrentMoveSpeed; }
 	FORCEINLINE float GetCurrentAttackSpeed() const { return CurrentAttackSpeed; }
 	FORCEINLINE float GetCurrentBaseDamage() const { return CurrentBaseDamage; }
-
+	
 /////////////// Default things ///////////////
 public:
 	AKingdomsCharacter();
