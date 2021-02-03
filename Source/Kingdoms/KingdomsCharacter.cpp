@@ -16,8 +16,6 @@
 #include "KingdomsPlayerController.h"
 #include "Kismet/KismetMathLibrary.h"
 
-
-
 void AKingdomsCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const 
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);

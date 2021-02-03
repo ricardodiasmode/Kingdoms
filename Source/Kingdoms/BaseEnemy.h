@@ -27,34 +27,41 @@ private:
 	UWidgetComponent* StatusWidget;
 
 	// Time between quads(1.f = 1 quad per second)
-	float MoveSpeed = 1.f
+	float MoveSpeed = 1.f;
 	FTimerHandle MoveTimer;
 	AKingdomsCharacter* CharacterToChase;
 	// Location above of the quad to move
 	FVector QuadToMove;
+
 
 protected:
 	UPROPERTY(EditAnywhere)
 	TArray<UMaterialInstance*> SelectedMaterials;
 	UPROPERTY(EditAnywhere)
 	TArray<UMaterialInstance*> DefaultMaterials;
+
 	UPROPERTY(EditAnywhere)
 	float MaxLife = 100.f;
 	UPROPERTY(EditAnywhere)
 	float MaxMana = 100.f;
 
+	UPROPERTY(BlueprintReadWrite)
+	FVector InitialSpawnLocation;
+
 	UStatusBar* StatusWidgetRef;
 
 //// Methods ////
 private:
+
 	void CheckShouldDie();
 
 	UFUNCTION(Server, reliable)
 	void Server_DestroyMe();
 
 	// Recursive function that find from character to this enemy a avaliable path and return the first quad to this path
-	FVector FindWayToCharacter(FVector LastQuadLocation);
-
+	FVector FindWayToCharacterOrQuad(FVector LastQuadLocation, bool TargetIsCharacter);
+	FVector MoveDownUp(FVector LastQuadLocation, FVector FrontVector, bool TargetIsCharacter);
+	FVector MoveLeftRight(FVector LastQuadLocation, FVector FrontVector, bool TargetIsCharacter);
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -90,13 +97,18 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void MoveToRandomQuad();
 
-	void MoveToQuad(FVector QuadToMove);
+	void MoveToCharacterDirection();
 
 	/* Function called by AIController to back to spawn after chase player
 	*/
 	UFUNCTION(BlueprintCallable)
 	void GoBackToSpawn();
 
+	void MoveToSpawnDirection();
+
 	void SetCurrentLife(const float LifeToSet) { CurrentLife = (LifeToSet < 0) ? 0 : LifeToSet; }
 	FORCEINLINE float GetCurrentLife() { return CurrentLife; }
+	
+	UFUNCTION(BlueprintPure)
+	FORCEINLINE bool IsMoving() const { return GetWorldTimerManager().IsTimerActive(MoveTimer); }
 };

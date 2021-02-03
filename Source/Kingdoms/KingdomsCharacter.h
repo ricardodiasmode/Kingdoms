@@ -70,6 +70,7 @@ private:
 	void OnClick();
 
 public:
+
 	FORCEINLINE float GetCurrentMoveSpeed() const { return CurrentMoveSpeed; }
 	FORCEINLINE float GetCurrentAttackSpeed() const { return CurrentAttackSpeed; }
 	FORCEINLINE float GetCurrentBaseDamage() const { return CurrentBaseDamage; }
