@@ -6,11 +6,20 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
 
+void ABaseEnemy::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ABaseEnemy, CurrentLife);
+	DOREPLIFETIME(ABaseEnemy, CurrentMana);
+}
+
+
 // Sets default values
 ABaseEnemy::ABaseEnemy()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 
 	// Creating widget component that holds mana and life
 	StatusWidget = CreateDefaultSubobject<UWidgetComponent>("StatusBar");
@@ -26,8 +35,11 @@ ABaseEnemy::ABaseEnemy()
 void ABaseEnemy::BeginPlay()
 {
 	Super::BeginPlay();
-	CurrentLife = MaxLife;
-	CurrentMana = MaxMana;
+	if (HasAuthority())
+	{
+		CurrentLife = MaxLife;
+		CurrentMana = MaxMana;
+	}
 	StatusWidget->SetRelativeLocation(FVector(0.0f, 0.0f, 110.0f));
 	StatusWidgetRef = Cast< UStatusBar >(StatusWidget->GetUserWidgetObject());
 }
@@ -36,11 +48,6 @@ void ABaseEnemy::BeginPlay()
 void ABaseEnemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	if (StatusWidgetRef)
-	{
-		StatusWidgetRef->SetCurrentLife(GetCurrentLife() / MaxLife);
-		StatusWidgetRef->SetCurrentMana(GetCurrentMana() / MaxMana);
-	}
 }
 
 // Called to bind functionality to input
@@ -244,9 +251,12 @@ FVector ABaseEnemy::FindWayToCharacterOrQuad(FVector LastQuadLocation, bool Targ
 	{
 		if (CharacterToChase)
 		{
-			// Check if i am too far
+			// Check if i am too far to character
 			if (FVector(CharacterToChase->GetActorLocation() - LastQuadLocation).Size() > 3500 || FVector(CharacterToChase->GetActorLocation() - GetActorLocation()).Size() > 3500.f)
+			{
+				GoBackToSpawn();
 				return FVector(0, 0, -9999);
+			}
 			// Check if i am too close
 			if (FVector(CharacterToChase->GetActorLocation() - GetActorLocation()).Size() < 125)
 			{
@@ -401,7 +411,7 @@ void ABaseEnemy::MoveToSpawnDirection()
 
 #pragma endregion
 
-bool ABaseEnemy::HitCharacter()
+void ABaseEnemy::Server_HitCharacter_Implementation()
 {
 	if (CharacterToChase)
 	{
@@ -410,13 +420,14 @@ bool ABaseEnemy::HitCharacter()
 			if (AAIController* MyAIController = Cast<AAIController>(GetController()))
 			{
 				if (AEnemyAIController* MyController = Cast< AEnemyAIController >(MyAIController))
+				{
+					return;
 					MyController->SetCanAttack(false);
+				}
 			}
-			return false;
 		}
 		CharacterToChase->RecieveDamage(BaseDamage);
 	}
-	return true;
 }
 
 bool ABaseEnemy::OnBeingClicked()
@@ -471,3 +482,48 @@ void ABaseEnemy::Server_DestroyMe_Implementation(AKingdomsCharacter* AgressiveCh
 	AgressiveCharacter->AddExperience(ExperienceValue);
 	Destroy();
 }
+
+#pragma region OnRep Functions
+
+void ABaseEnemy::OnRep_CurrentLife()
+{
+	if (StatusWidgetRef)
+		StatusWidgetRef->SetCurrentLife(GetCurrentLife() / MaxLife);
+	else
+	{
+		FTimerHandle UnusedHandle;
+		GetWorldTimerManager().SetTimer(UnusedHandle, this, &ABaseEnemy::TrySetCurrentLifeAgain, 1.f, false);
+	}
+}
+
+void ABaseEnemy::TrySetCurrentLifeAgain()
+{
+	if (StatusWidgetRef)
+	{
+		StatusWidgetRef->SetCurrentLife(GetCurrentLife() / MaxLife);
+	}
+}
+
+void ABaseEnemy::OnRep_CurrentMana()
+{
+	// Setting current exp on experience widget
+	if (StatusWidgetRef)
+	{
+		StatusWidgetRef->SetCurrentMana(GetCurrentMana() / MaxMana);
+	}
+	else
+	{
+		FTimerHandle UnusedHandle;
+		GetWorldTimerManager().SetTimer(UnusedHandle, this, &ABaseEnemy::TrySetCurrentManaAgain, 1.f, false);
+	}
+}
+
+void ABaseEnemy::TrySetCurrentManaAgain()
+{
+	if (StatusWidgetRef)
+	{
+		StatusWidgetRef->SetCurrentMana(GetCurrentMana() / MaxMana);
+	}
+}
+
+#pragma endregion

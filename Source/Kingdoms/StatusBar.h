@@ -19,12 +19,19 @@ private:
 	float CurrentLife;
 	float CurrentMana;
 
+protected:
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnSetLife();
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnSetMana();
+
 public:
 	UFUNCTION(BlueprintCallable)
 	FORCEINLINE float GetCurrentLife() const { return CurrentLife; }
-	void SetCurrentLife(float LifeToSet) { CurrentLife = LifeToSet; }
+	void SetCurrentLife(float LifeToSet) { CurrentLife = LifeToSet; OnSetLife(); }
 	UFUNCTION(BlueprintCallable)
 	FORCEINLINE float GetCurrentMana() const { return CurrentMana; }
-	void SetCurrentMana(float ManaToSet) { CurrentMana = ManaToSet; }
+	void SetCurrentMana(float ManaToSet) { CurrentMana = ManaToSet; OnSetMana(); }
 
 };

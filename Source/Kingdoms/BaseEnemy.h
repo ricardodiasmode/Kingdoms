@@ -20,7 +20,9 @@ private:
 	// This bool will be readed only locally
 	bool AmISelected;
 	
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentLife)
 	float CurrentLife;
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentMana)
 	float CurrentMana;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Widget, meta = (AllowPrivateAccess = "true"))
@@ -57,6 +59,13 @@ protected:
 
 //// Methods ////
 private:
+	UFUNCTION()
+	void OnRep_CurrentLife();
+	void TrySetCurrentLifeAgain();
+	UFUNCTION()
+	void OnRep_CurrentMana();
+	void TrySetCurrentManaAgain();
+
 	void CheckShouldDie(AKingdomsCharacter* AgressiveCharacter);
 
 	UFUNCTION(Server, reliable)
@@ -76,8 +85,8 @@ public:
 	ABaseEnemy();
 
 	// Called when close to character
-	UFUNCTION(BlueprintCallable)
-	virtual bool HitCharacter();
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	virtual void Server_HitCharacter();
 	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -95,6 +104,7 @@ public:
 	*/
 	void ChangeMaterials(bool IsSelected);
 
+	// Called by server when character hits the enemy
 	void LoseLife(const float Damage, AKingdomsCharacter* AgressiveCharacter);
 
 	/* Function called by BTT to start to chase a player

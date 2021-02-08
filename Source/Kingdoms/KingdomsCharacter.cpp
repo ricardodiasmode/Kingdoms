@@ -22,6 +22,10 @@ void AKingdomsCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 
 	DOREPLIFETIME(AKingdomsCharacter, IsMoving);
 	DOREPLIFETIME(AKingdomsCharacter, CurrentExperience);
+	DOREPLIFETIME(AKingdomsCharacter, RequiredExperienceToUp);
+	DOREPLIFETIME(AKingdomsCharacter, CurrentLevel);
+	DOREPLIFETIME(AKingdomsCharacter, CurrentLife);
+	DOREPLIFETIME(AKingdomsCharacter, CurrentMana);
 }
 
 AKingdomsCharacter::AKingdomsCharacter()
@@ -128,27 +132,33 @@ void AKingdomsCharacter::OnClick()
 	}
 }
 
+#pragma region Move System
+
 void AKingdomsCharacter::MoveForward(float Value)
 {
 	if ((Controller != NULL) && (Value != 0.0f))
 	{
-		if (Value > 0)
+		// Check if character is in center of the quad
+		if (((int)GetActorLocation().X % 100) == 0)
 		{
-			LastMoveKey = "W";
-			Server_SetRotationOnMoving("W");
-			if (!HasAuthority())
-				Multicast_SetRotationOnMoving(0.f);
+			if (Value > 0)
+			{
+				LastMoveKey = "W";
+				Server_SetRotationOnMoving("W");
+				if (!HasAuthority())
+					Multicast_SetRotationOnMoving(0.f);
+			}
+			else
+			{
+				LastMoveKey = "S";
+				Server_SetRotationOnMoving("S");
+				if (!HasAuthority())
+					Multicast_SetRotationOnMoving(180.f);
+			}
+			float AdditionalMove = 100 * Value;
+			FVector LocalLocationToMove(GetActorLocation().X + AdditionalMove, GetActorLocation().Y, GetActorLocation().Z);
+			Server_MoveWithMoveSpeed(LocalLocationToMove);
 		}
-		else
-		{
-			LastMoveKey = "S";
-			Server_SetRotationOnMoving("S");
-			if (!HasAuthority())
-				Multicast_SetRotationOnMoving(180.f);
-		}
-		float AdditionalMove = 100 * Value;
-		FVector LocalLocationToMove(GetActorLocation().X + AdditionalMove, GetActorLocation().Y, GetActorLocation().Z);
-		Server_MoveWithMoveSpeed(LocalLocationToMove);
 	}
 }
 
@@ -156,24 +166,27 @@ void AKingdomsCharacter::MoveRight(float Value)
 {
 	if ((Controller != NULL) && (Value != 0.0f))
 	{
-		if (Value > 0)
+		// Check if character is in center of the quad
+		if (((int)GetActorLocation().Y % 100) == 0)
 		{
-			LastMoveKey = "D";
-			Server_SetRotationOnMoving("D");
-			if(!HasAuthority())
-				Multicast_SetRotationOnMoving(90.f);
+			if (Value > 0)
+			{
+				LastMoveKey = "D";
+				Server_SetRotationOnMoving("D");
+				if(!HasAuthority())
+					Multicast_SetRotationOnMoving(90.f);
+			}
+			else
+			{
+				LastMoveKey = "A";
+				Server_SetRotationOnMoving("A");
+				if (!HasAuthority())
+					Multicast_SetRotationOnMoving(270.f);
+			}
+			float AdditionalMove = 100 * Value;
+			FVector LocalLocationToMove(GetActorLocation().X, GetActorLocation().Y + AdditionalMove, GetActorLocation().Z);
+			Server_MoveWithMoveSpeed(LocalLocationToMove);
 		}
-		else
-		{
-			LastMoveKey = "A";
-			Server_SetRotationOnMoving("A");
-			if (!HasAuthority())
-				Multicast_SetRotationOnMoving(270.f);
-
-		}
-		float AdditionalMove = 100 * Value;
-		FVector LocalLocationToMove(GetActorLocation().X, GetActorLocation().Y + AdditionalMove, GetActorLocation().Z);
-		Server_MoveWithMoveSpeed(LocalLocationToMove);
 	}
 }
 
@@ -191,8 +204,12 @@ void AKingdomsCharacter::Server_SetRotationOnMoving_Implementation(const FString
 
 void AKingdomsCharacter::Server_MoveWithMoveSpeed_Implementation(const FVector Location)
 {
+	if (IsMoving)
+		return;
 	if (CanMoveWithMoveSpeed)
 	{
+		if (GEngine)
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, FString::Printf(TEXT("DESGRACA")));
 		CanMoveWithMoveSpeed = false;
 		LocationToMove = Location;
 		IsMoving = true;
@@ -268,6 +285,8 @@ void AKingdomsCharacter::Multicast_SetRotationOnMoving_Implementation(float Dire
 	SetActorRotation(CurrentRotation, ETeleportType::None);
 }
 
+#pragma endregion
+
 void AKingdomsCharacter::SetAttackRange()
 {
 	if (FantasyClass == CharacterClass::Knight)
@@ -277,9 +296,18 @@ void AKingdomsCharacter::SetAttackRange()
 void AKingdomsCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (HasAuthority())
+	{
+		CurrentLife = MaxLife;
+		CurrentMana = MaxMana;
+		// Setting level and exp to default while we have no save
+		CurrentLevel = 1;
+		CurrentExperience = 0;
+		RequiredExperienceToUp = 1 + pow(CurrentLevel, 2);
+	}
+
 	SetAttackRange();
-	CurrentLife = MaxLife;
-	CurrentMana = MaxMana;
 
 	StatusWidget->SetRelativeLocation(FVector(0.0f, 0.0f, 120.0f));
 	StatusWidgetRef = Cast< UStatusBar >(StatusWidget->GetUserWidgetObject());
@@ -295,30 +323,16 @@ void AKingdomsCharacter::AddExperience(int ExperienceToAdd)
 	while(CurrentExperience >= RequiredExperienceToUp)
 	{
 		// Upgrading level
-		CurrentLevel++;
 		CurrentExperience -= RequiredExperienceToUp;
+		CurrentLevel++;
 		// Increase required experience to upgrade
 		RequiredExperienceToUp = 1 + pow(CurrentLevel, 2);
-	}
-	// Setting current exp on experience widget
-	if (ExperienceWidgetRef)
-	{
-		ExperienceWidgetRef->SetCurrentLevel(CurrentLevel);
-		ExperienceWidgetRef->SetCurrentExperience((float)CurrentExperience / (float)RequiredExperienceToUp);
 	}
 }
 
 void AKingdomsCharacter::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
-
-	// Setting current life on status widget
-	if (StatusWidgetRef)
-	{
-		StatusWidgetRef->SetCurrentLife(GetCurrentLife() / MaxLife);
-		StatusWidgetRef->SetCurrentMana(GetCurrentMana() / MaxMana);
-
-	}
 
 	if (CursorToWorld != nullptr)
 	{
@@ -395,3 +409,95 @@ void AKingdomsCharacter::RecieveDamage(float DamageToRecieve)
 {
 	CurrentLife -= DamageToRecieve;
 }
+
+#pragma region OnRep Functions
+
+void AKingdomsCharacter::OnRep_CurrentLife()
+{
+	// Setting current life on status widget
+	if (StatusWidgetRef)
+	{
+		StatusWidgetRef->SetCurrentLife(GetCurrentLife() / MaxLife);
+	}
+	else
+	{
+		FTimerHandle UnusedHandle;
+		GetWorldTimerManager().SetTimer(UnusedHandle, this, &AKingdomsCharacter::TrySetCurrentLifeAgain, 1.f, false);
+	}
+}
+
+void AKingdomsCharacter::TrySetCurrentLifeAgain()
+{
+	if (StatusWidgetRef)
+	{
+		StatusWidgetRef->SetCurrentLife(GetCurrentLife() / MaxLife);
+	}
+}
+
+void AKingdomsCharacter::OnRep_RequiredExperienceToUp()
+{
+	// Setting current exp on experience widget
+	if (ExperienceWidgetRef)
+	{
+		ExperienceWidgetRef->SetCurrentExperience((float)CurrentExperience / (float)RequiredExperienceToUp);
+	}
+	else
+	{
+		FTimerHandle UnusedHandle;
+		GetWorldTimerManager().SetTimer(UnusedHandle, this, &AKingdomsCharacter::TrySetRequiredExperienceToUpAgain, 1.f, false);
+	}
+}
+
+void AKingdomsCharacter::TrySetRequiredExperienceToUpAgain()
+{
+	if (ExperienceWidgetRef)
+	{
+		ExperienceWidgetRef->SetCurrentExperience((float)CurrentExperience / (float)RequiredExperienceToUp);
+	}
+}
+
+void AKingdomsCharacter::OnRep_CurrentLevel()
+{
+	// Setting current exp on experience widget
+	if (ExperienceWidgetRef)
+	{
+		ExperienceWidgetRef->SetCurrentLevel(CurrentLevel);
+	}
+	else
+	{
+		FTimerHandle UnusedHandle;
+		GetWorldTimerManager().SetTimer(UnusedHandle, this, &AKingdomsCharacter::TrySetCurrentLevelAgain, 1.f, false);
+	}
+}
+
+void AKingdomsCharacter::TrySetCurrentLevelAgain()
+{
+	if (ExperienceWidgetRef)
+	{
+		ExperienceWidgetRef->SetCurrentLevel(CurrentLevel);
+	}
+}
+
+void AKingdomsCharacter::OnRep_CurrentMana()
+{
+	// Setting current exp on experience widget
+	if (StatusWidgetRef)
+	{
+		StatusWidgetRef->SetCurrentMana(GetCurrentMana() / MaxMana);
+	}
+	else
+	{
+		FTimerHandle UnusedHandle;
+		GetWorldTimerManager().SetTimer(UnusedHandle, this, &AKingdomsCharacter::TrySetCurrentManaAgain, 1.f, false);
+	}
+}
+
+void AKingdomsCharacter::TrySetCurrentManaAgain()
+{
+	if (StatusWidgetRef)
+	{
+		StatusWidgetRef->SetCurrentMana(GetCurrentMana() / MaxMana);
+	}
+}
+
+#pragma endregion

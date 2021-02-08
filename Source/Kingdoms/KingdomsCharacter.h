@@ -36,20 +36,24 @@ private:
 	// Character base attack range. Based in squares (1 means 100uu)
 	float AttackRange = 1.f;
 	// Character current experience to upgrade the hero stats
-	UPROPERTY(Replicated)
-	int CurrentExperience = 0;
-	UPROPERTY(Replicated)
-	int RequiredExperienceToUp = 1 + pow(CurrentLevel,2);
-	// Character current level
-	UPROPERTY(Replicated)
-	int CurrentLevel = 1;
+	UPROPERTY(ReplicatedUsing = OnRep_RequiredExperienceToUp)
+	int CurrentExperience = -1;
+	// Character required experience to up. The calculation is: 1 + pow(CurrentLevel,2)
+	UPROPERTY(ReplicatedUsing = OnRep_RequiredExperienceToUp)
+	int RequiredExperienceToUp = 0;
 
-	UPROPERTY(EditAnywhere)
+	// Character current level
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentLevel)
+	int CurrentLevel = 0;
+
+	UPROPERTY(Replicated)
 	float MaxLife = 100.f;
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(Replicated)
 	float MaxMana = 100.f;
 
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentLife)
 	float CurrentLife;
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentMana)
 	float CurrentMana;
 
 	FTimerHandle HitEnemyTimer;
@@ -100,7 +104,30 @@ private:
 
 public:
 
+	// Called after set CurrentLife
+	UFUNCTION()
+	void OnRep_CurrentLife();
+	// Necessary to set initial life when spawning
+	void TrySetCurrentLifeAgain();
+
+	// Called after set CurrentMana
+	UFUNCTION()
+	void OnRep_CurrentMana();
+	void TrySetCurrentManaAgain();
+
+	// Called after set RequiredExperienceToUp
+	UFUNCTION()
+	void OnRep_RequiredExperienceToUp();
+	void TrySetRequiredExperienceToUpAgain();
+
+	// Called after set CurrentLevel
+	UFUNCTION()
+	void OnRep_CurrentLevel();
+	void TrySetCurrentLevelAgain();
+
+	// Called by server after taking damage
 	void RecieveDamage(float DamageToRecieve);
+	// Called by server after kill a enemy
 	void AddExperience(int ExperienceToAdd);
 
 	FORCEINLINE float GetCurrentMana() const { return CurrentMana; }
