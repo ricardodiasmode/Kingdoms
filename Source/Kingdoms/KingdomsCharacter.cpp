@@ -26,6 +26,8 @@ void AKingdomsCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 	DOREPLIFETIME(AKingdomsCharacter, CurrentLevel);
 	DOREPLIFETIME(AKingdomsCharacter, CurrentLife);
 	DOREPLIFETIME(AKingdomsCharacter, CurrentMana);
+	DOREPLIFETIME(AKingdomsCharacter, MaxLife);
+	DOREPLIFETIME(AKingdomsCharacter, MaxMana);
 }
 
 AKingdomsCharacter::AKingdomsCharacter()
@@ -123,9 +125,9 @@ void AKingdomsCharacter::OnClick()
 				if (ABaseEnemy* InimigoAtingido = Cast<ABaseEnemy>(HitResult.GetActor()))
 				{
 					if (InimigoAtingido->OnBeingClicked())
-						Server_OnSelectEnemy(InimigoAtingido);
+						Client_OnSelectEnemy(InimigoAtingido);
 					else
-						OnDeselectEnemy();
+						Client_OnDeselectEnemy();
 				}
 			}
 		}
@@ -139,26 +141,14 @@ void AKingdomsCharacter::MoveForward(float Value)
 	if ((Controller != NULL) && (Value != 0.0f))
 	{
 		// Check if character is in center of the quad
-		if (((int)GetActorLocation().X % 100) == 0)
+		if (((int)GetActorLocation().X % 100) < 1)
 		{
-			if (Value > 0)
-			{
-				LastMoveKey = "W";
-				Server_SetRotationOnMoving("W");
-				if (!HasAuthority())
-					Multicast_SetRotationOnMoving(0.f);
-			}
-			else
-			{
-				LastMoveKey = "S";
-				Server_SetRotationOnMoving("S");
-				if (!HasAuthority())
-					Multicast_SetRotationOnMoving(180.f);
-			}
 			float AdditionalMove = 100 * Value;
 			FVector LocalLocationToMove(GetActorLocation().X + AdditionalMove, GetActorLocation().Y, GetActorLocation().Z);
 			Server_MoveWithMoveSpeed(LocalLocationToMove);
 		}
+		else
+			AdjustQuad(true);
 	}
 }
 
@@ -167,130 +157,90 @@ void AKingdomsCharacter::MoveRight(float Value)
 	if ((Controller != NULL) && (Value != 0.0f))
 	{
 		// Check if character is in center of the quad
-		if (((int)GetActorLocation().Y % 100) == 0)
+		if (((int)GetActorLocation().Y % 100) < 1)
 		{
-			if (Value > 0)
-			{
-				LastMoveKey = "D";
-				Server_SetRotationOnMoving("D");
-				if(!HasAuthority())
-					Multicast_SetRotationOnMoving(90.f);
-			}
-			else
-			{
-				LastMoveKey = "A";
-				Server_SetRotationOnMoving("A");
-				if (!HasAuthority())
-					Multicast_SetRotationOnMoving(270.f);
-			}
 			float AdditionalMove = 100 * Value;
 			FVector LocalLocationToMove(GetActorLocation().X, GetActorLocation().Y + AdditionalMove, GetActorLocation().Z);
 			Server_MoveWithMoveSpeed(LocalLocationToMove);
 		}
+		else
+			AdjustQuad(false);
 	}
 }
 
-void AKingdomsCharacter::Server_SetRotationOnMoving_Implementation(const FString& KeyRef)
+void AKingdomsCharacter::AdjustQuad(bool IsX)
 {
-	if (KeyRef == "W")
-		Multicast_SetRotationOnMoving(0.f);
-	if (KeyRef == "A")
-		Multicast_SetRotationOnMoving(270.f);
-	if (KeyRef == "S")
-		Multicast_SetRotationOnMoving(180.f);
-	if (KeyRef == "D")
-		Multicast_SetRotationOnMoving(90.f);
+	if (IsMoving)
+		return;
+	if (IsX)
+	{
+		int Module = (int)GetActorLocation().X % 100;
+		// Check if is closer to X+
+		float integral, fractional;
+		fractional = modf(GetActorLocation().X / 100, &integral);
+		if (fractional > 0.5 || (fractional > -0.5 && fractional < 0))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("setting x+"));
+			SetActorLocation(FVector(GetActorLocation().X + 0.25, GetActorLocation().Y, GetActorLocation().Z));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("setting x-"));
+			SetActorLocation(FVector(GetActorLocation().X - 0.25, GetActorLocation().Y, GetActorLocation().Z));
+		}
+	}
+	else
+	{
+		int Module = (int)GetActorLocation().Y % 100;
+		// Check if is closer to Y+
+		float integral, fractional;
+		fractional = modf(GetActorLocation().Y / 100, &integral);
+		if (fractional > 0.5 || (fractional > -0.5 && fractional < 0))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("setting y+"));
+			SetActorLocation(FVector(GetActorLocation().X, GetActorLocation().Y + 0.25, GetActorLocation().Z));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("setting y-"));
+			SetActorLocation(FVector(GetActorLocation().X, GetActorLocation().Y - 0.25, GetActorLocation().Z));
+		}
+	}
 }
 
 void AKingdomsCharacter::Server_MoveWithMoveSpeed_Implementation(const FVector Location)
 {
-	if (IsMoving)
-		return;
-	if (CanMoveWithMoveSpeed)
+	if (!IsMoving)
 	{
-		if (GEngine)
-			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, FString::Printf(TEXT("DESGRACA")));
-		CanMoveWithMoveSpeed = false;
 		LocationToMove = Location;
+		// This bool will tell tick event that character should move
 		IsMoving = true;
 		if (!(GetWorldTimerManager().IsTimerActive(MoveTimer)))
-			GetWorldTimerManager().SetTimer(MoveTimer, this, &AKingdomsCharacter::MoveToDesiredLocation, 0.001f, true, 0.0f);
+			GetWorldTimerManager().SetTimer(MoveTimer, this, &AKingdomsCharacter::CheckReachedDesiredLocation, 0.1f, true, 0.0f);
+		
 	}
 }
 
-void AKingdomsCharacter::MoveToDesiredLocation()
+void AKingdomsCharacter::CheckReachedDesiredLocation()
 {
-	FHitResult OutSweepHitResult;
-	// Using ease to make a smooth movement
-	FVector EaseResult(UKismetMathLibrary::Ease(GetActorLocation().X, LocationToMove.X, CurrentMoveSpeed / 100.f, EEasingFunc::Linear),
-		UKismetMathLibrary::Ease(GetActorLocation().Y, LocationToMove.Y, CurrentMoveSpeed / 100.f, EEasingFunc::Linear),
-		UKismetMathLibrary::Ease(GetActorLocation().Z, LocationToMove.Z, CurrentMoveSpeed / 100.f, EEasingFunc::Linear));
-	SetActorLocation(EaseResult, false, &OutSweepHitResult, ETeleportType::None);
-	// Check if the location is close or is already in the goal
-	if (EaseResult.Equals(LocationToMove, 5.f))
+	if (LocationToMove.Equals(GetActorLocation(), 1.0))
 	{
-		SetActorLocation(LocationToMove, false, &OutSweepHitResult, ETeleportType::None);
-		if (!(GetWorldTimerManager().IsTimerActive(MoveTimer)))
-			GetWorldTimerManager().ClearTimer(MoveTimer);
-		CanMoveWithMoveSpeed = true;
-		if(LastMoveKey == "A")
-			SetActorRotation(FRotator(0.f, 270.f, 0.f), ETeleportType::None);
-		else if(LastMoveKey == "D")
-			SetActorRotation(FRotator(0.f, 90.f, 0.f), ETeleportType::None);
-		else if(LastMoveKey == "W")
-			SetActorRotation(FRotator(0.f, 0.f, 0.f), ETeleportType::None);
-		else
-			SetActorRotation(FRotator(0.f, 180.f, 0.f), ETeleportType::None);
-		AlphaRotation = 0.f;
 		IsMoving = false;
+		if (GetWorldTimerManager().IsTimerActive(MoveTimer))
+			GetWorldTimerManager().ClearTimer(MoveTimer);
 	}
 }
 
-void AKingdomsCharacter::Multicast_SetRotationOnMoving_Implementation(float Direction)
+void AKingdomsCharacter::Multicast_AddMovementInput_Implementation(const FVector Direction)
 {
-	FRotator TestRotation;
-	TestRotation.Yaw = Direction;
-	// Testing if the rotation is next to goal to not run the function for nothing
-	if (GetActorRotation().Equals(TestRotation, 5.f))
-	{
-		SetActorRotation(FRotator(0.f, Direction, 0.f), ETeleportType::None);
-		return;
-	}
-	else
-	{
-		if (GetActorRotation().Equals(TestRotation, 5.f))
-		{
-			SetActorRotation(FRotator(0.f, Direction, 0.f), ETeleportType::None);
-			return;
-		}
-	}
-	// Using ease to do a smooth rotation movement
-	AlphaRotation += 0.175f;
-	AlphaRotation = FMath::Clamp(AlphaRotation, 0.0f, 1.f);
-	// Converting Yaw to make sure that it will me positive values to not flick the character
-	float EaseYaw;
-	float EaseResult;
-	if (UKismetMathLibrary::Abs(GetActorRotation().Yaw - Direction) > UKismetMathLibrary::Abs(GetActorRotation().Yaw+360 - Direction))
-	{
-		EaseYaw = GetActorRotation().Yaw + 360;
-		EaseResult = UKismetMathLibrary::Ease(EaseYaw, Direction, AlphaRotation, EEasingFunc::Linear);
-	}
-	else
-	{
-		EaseYaw = GetActorRotation().Yaw;
-		EaseResult = UKismetMathLibrary::Ease(EaseYaw, Direction, AlphaRotation, EEasingFunc::Linear);
-	}
-	FRotator CurrentRotation;
-	CurrentRotation.Yaw = EaseResult;
-	SetActorRotation(CurrentRotation, ETeleportType::None);
+	AddMovementInput(Direction, 0.025, false);
 }
 
 #pragma endregion
 
 void AKingdomsCharacter::SetAttackRange()
 {
-	if (FantasyClass == CharacterClass::Knight)
-		AttackRange = 1.f;
+	AttackRange = 1.f;
 }
 
 void AKingdomsCharacter::BeginPlay()
@@ -311,7 +261,7 @@ void AKingdomsCharacter::BeginPlay()
 
 	StatusWidget->SetRelativeLocation(FVector(0.0f, 0.0f, 120.0f));
 	StatusWidgetRef = Cast< UStatusBar >(StatusWidget->GetUserWidgetObject());
-	
+
 	ExperienceWidget->SetRelativeLocation(FVector(0.0f, 0.0f, 90.0f));
 	ExperienceWidgetRef = Cast< UExperienceBar >(ExperienceWidget->GetUserWidgetObject());
 }
@@ -320,7 +270,7 @@ void AKingdomsCharacter::AddExperience(int ExperienceToAdd)
 {
 	CurrentExperience += ExperienceToAdd;
 	// Check if player reach the required experience to upgrade
-	while(CurrentExperience >= RequiredExperienceToUp)
+	while (CurrentExperience >= RequiredExperienceToUp)
 	{
 		// Upgrading level
 		CurrentExperience -= RequiredExperienceToUp;
@@ -332,7 +282,18 @@ void AKingdomsCharacter::AddExperience(int ExperienceToAdd)
 
 void AKingdomsCharacter::Tick(float DeltaSeconds)
 {
-    Super::Tick(DeltaSeconds);
+	Super::Tick(DeltaSeconds);
+
+
+	// Check if want to move then add movement input
+	if (HasAuthority())
+	{
+		if (IsMoving)
+		{
+			Multicast_AddMovementInput(LocationToMove - GetActorLocation());
+			AddMovementInput(LocationToMove - GetActorLocation(), 0.025, false);
+		}
+	}
 
 	if (CursorToWorld != nullptr)
 	{
@@ -369,21 +330,39 @@ void AKingdomsCharacter::Server_OnDeselectEnemy_Implementation()
 		GetWorldTimerManager().ClearTimer(HitEnemyTimer);
 }
 
-void AKingdomsCharacter::OnDeselectEnemy()
+bool AKingdomsCharacter::Client_OnDeselectEnemy_Validate()
 {
+	if (CurrentlyHittedEnemy)
+		return true;
+	return false;
+}
+
+void AKingdomsCharacter::Client_OnDeselectEnemy_Implementation()
+{
+	Cast< ABaseEnemy>(CurrentlyHittedEnemy)->ChangeMaterials(false);
 	Server_OnDeselectEnemy();
+}
+
+void AKingdomsCharacter::Client_OnSelectEnemy_Implementation(class ACharacter* EnemyToHit)
+{
+	if (CurrentlyHittedEnemy != nullptr)
+		Client_OnDeselectEnemy();
+	if (EnemyToHit != nullptr)
+		CurrentlyHittedEnemy = EnemyToHit; 
+	Cast< ABaseEnemy>(CurrentlyHittedEnemy)->ChangeMaterials(true);
+	Server_OnSelectEnemy(CurrentlyHittedEnemy);
 }
 
 bool AKingdomsCharacter::Server_OnSelectEnemy_Validate(class ACharacter* EnemyToHit)
 {
-	if (EnemyToHit != NULL)
+	if (EnemyToHit != nullptr)
 		return true;
 	return false;
 }
 
 void AKingdomsCharacter::Server_OnSelectEnemy_Implementation(class ACharacter* EnemyToHit)
 {
-	if (EnemyToHit != NULL)
+	if (EnemyToHit != nullptr)
 		CurrentlyHittedEnemy = EnemyToHit;
 	// Timer that makes player hits based on attack speed
 	if(!(GetWorldTimerManager().IsTimerActive(HitEnemyTimer)))

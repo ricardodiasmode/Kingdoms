@@ -33,8 +33,6 @@ private:
 	float CurrentMoveSpeed = 1.f;
 	// Character base attack speed. The lower it is, the faster the character hits
 	float CurrentAttackSpeed = 1.f;
-	// Character base attack range. Based in squares (1 means 100uu)
-	float AttackRange = 1.f;
 	// Character current experience to upgrade the hero stats
 	UPROPERTY(ReplicatedUsing = OnRep_RequiredExperienceToUp)
 	int CurrentExperience = -1;
@@ -59,14 +57,13 @@ private:
 	FTimerHandle HitEnemyTimer;
 	// Function that hits the enemy called by server
 	void HitEnemy();
-	FString LastMoveKey;
-	bool CanMoveWithMoveSpeed = true;
 	FTimerHandle MoveTimer;
-	FVector LocationToMove;
-	void MoveToDesiredLocation();
+	FVector LocationToMove = FVector(0,0,-999);
 	float AlphaRotation = 0;
 
 protected:
+	// Character base attack range. Based in squares (1 means 100uu)
+	float AttackRange = 1.f;
 	// Character fantasy class
 	CharacterClass FantasyClass;
 	// Character base damage.
@@ -82,27 +79,29 @@ public:
 
 	//// Methods ////
 private:
-	void SetAttackRange();
-
-	UFUNCTION(Server, reliable)
-	void Server_SetRotationOnMoving(const FString& KeyRef);
+	void AdjustQuad(bool IsX);
 
 	UFUNCTION(Server, unreliable)
 	void Server_MoveWithMoveSpeed(const FVector Location);
-
-	UFUNCTION(NetMulticast, unreliable)
-	void Multicast_SetRotationOnMoving(float Direction);
-
+	UFUNCTION(NetMulticast, reliable)
+	void Multicast_AddMovementInput(const FVector Direction);
+	UFUNCTION(Client, reliable)
+	void Client_OnSelectEnemy(class ACharacter* EnemyToHit);
 	UFUNCTION(Server, reliable, WithValidation)
 	void Server_OnSelectEnemy(class ACharacter* EnemyToHit);
-	UFUNCTION(BlueprintCallable)
-	void OnDeselectEnemy();
+	UFUNCTION(Client, reliable, WithValidation)
+	void Client_OnDeselectEnemy();
 	UFUNCTION(Server, reliable)
 	void Server_OnDeselectEnemy();
 
 	void OnClick();
 
+protected:
+	virtual void SetAttackRange();
+
 public:
+	// Function that check if the location is close or is already in the goal when moving
+	void CheckReachedDesiredLocation();
 
 	// Called after set CurrentLife
 	UFUNCTION()

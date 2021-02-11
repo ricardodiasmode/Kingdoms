@@ -8,3 +8,8 @@ ACharacterKnight::ACharacterKnight()
 	CurrentBaseDamage = 10.f;
 	FantasyClass = CharacterClass::Knight;
 }
+
+void ACharacterKnight::SetAttackRange()
+{
+	AttackRange = 1.f;
+}

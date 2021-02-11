@@ -17,5 +17,8 @@ class KINGDOMS_API ACharacterKnight : public AKingdomsCharacter
 	GENERATED_BODY()
 
 	ACharacterKnight();
+
+protected:
+	virtual void SetAttackRange() override;
 	
 };

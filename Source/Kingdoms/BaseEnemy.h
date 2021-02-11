@@ -19,7 +19,7 @@ class KINGDOMS_API ABaseEnemy : public ACharacter
 private:
 	// This bool will be readed only locally
 	bool AmISelected;
-	
+
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentLife)
 	float CurrentLife;
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentMana)

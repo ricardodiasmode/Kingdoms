@@ -61,12 +61,17 @@ void ABaseEnemy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent
 void ABaseEnemy::SetTimerToChasePlayer(AKingdomsCharacter* CharacterRef)
 {
 	CharacterToChase = CharacterRef;
-	if (!(GetWorldTimerManager().IsTimerActive(MoveTimer)))
-		GetWorldTimerManager().SetTimer(MoveTimer, this, &ABaseEnemy::MoveToCharacterDirection, 1.f, true, 0.0f);
+	if (GetWorldTimerManager().IsTimerActive(MoveTimer))
+		GetWorldTimerManager().ClearTimer(MoveTimer);
+	GetWorldTimerManager().SetTimer(MoveTimer, this, &ABaseEnemy::MoveToCharacterDirection, 0.75f, true, 0.0f);
 }
 
 void ABaseEnemy::MoveToCharacterDirection()
 {
+	if (GetVelocity().Size() > 0)
+	{
+		return;
+	}
 	// Making the calculations to know what quad should the AI move
 	if (CharacterToChase)
 		QuadToMove = FindWayToCharacterOrQuad(CharacterToChase->GetActorLocation(), true);
@@ -101,6 +106,8 @@ FVector ABaseEnemy::MoveDownUp(FVector LastQuadLocation, FVector FrontVector, bo
 	Params.AddIgnoredActor(this);
 
 	UWorld* World = GetWorld();
+	if (!World)
+		return FVector(0, 0, -9999);
 	#pragma endregion
 
 	// First try front
@@ -433,7 +440,6 @@ void ABaseEnemy::Server_HitCharacter_Implementation()
 bool ABaseEnemy::OnBeingClicked()
 {
 	AmISelected = (AmISelected) ? false : true;
-	ChangeMaterials(AmISelected);
 	return AmISelected;
 }
 
