@@ -38,7 +38,7 @@ public:
 	* @param SlotIndex: Aimed slot
 	*/
 	UFUNCTION(BlueprintCallable)
-	FS_Item GetItemByIndex(int SlotIndex);
+	int GetItemByIndex(int SlotIndex);
 
 	/* Function that returns if has or not the desired item.
 	* @param ItemID: Aimed slot

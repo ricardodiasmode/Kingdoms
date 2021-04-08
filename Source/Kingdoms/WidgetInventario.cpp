@@ -19,10 +19,9 @@ void UWidgetInventario::GenerateSlots(int SlotsToCreate)
     }
 }
 
-FS_Item UWidgetInventario::GetItemByIndex(int SlotIndex)
+int UWidgetInventario::GetItemByIndex(int SlotIndex)
 {
-    FS_Item a;
-    return a;
+    return 0;
 }
 
 bool UWidgetInventario::CheckHasItem(int ItemID)

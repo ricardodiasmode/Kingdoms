@@ -176,7 +176,8 @@ void AKingdomsCharacter::AdjustQuad(bool IsX)
 	{
 		int Module = (int)GetActorLocation().X % 100;
 		// Check if is closer to X+
-		float integral, fractional;
+		double integral;
+		float fractional;
 		fractional = modf(GetActorLocation().X / 100, &integral);
 		if (fractional > 0.5 || (fractional > -0.5 && fractional < 0))
 		{
@@ -193,7 +194,8 @@ void AKingdomsCharacter::AdjustQuad(bool IsX)
 	{
 		int Module = (int)GetActorLocation().Y % 100;
 		// Check if is closer to Y+
-		float integral, fractional;
+		double integral;
+		float fractional;
 		fractional = modf(GetActorLocation().Y / 100, &integral);
 		if (fractional > 0.5 || (fractional > -0.5 && fractional < 0))
 		{
@@ -250,11 +252,15 @@ void AKingdomsCharacter::BeginPlay()
 	if (HasAuthority())
 	{
 		CurrentLife = MaxLife;
+		OnRep_CurrentLife();
 		CurrentMana = MaxMana;
+		OnRep_CurrentMana();
 		// Setting level and exp to default while we have no save
 		CurrentLevel = 1;
+		OnRep_CurrentLevel();
 		CurrentExperience = 0;
 		RequiredExperienceToUp = 1 + pow(CurrentLevel, 2);
+		OnRep_RequiredExperienceToUp();
 	}
 
 	SetAttackRange();
@@ -275,8 +281,10 @@ void AKingdomsCharacter::AddExperience(int ExperienceToAdd)
 		// Upgrading level
 		CurrentExperience -= RequiredExperienceToUp;
 		CurrentLevel++;
+		OnRep_CurrentLevel();
 		// Increase required experience to upgrade
 		RequiredExperienceToUp = 1 + pow(CurrentLevel, 2);
+		OnRep_RequiredExperienceToUp();
 	}
 }
 
@@ -291,7 +299,7 @@ void AKingdomsCharacter::Tick(float DeltaSeconds)
 		if (IsMoving)
 		{
 			Multicast_AddMovementInput(LocationToMove - GetActorLocation());
-			AddMovementInput(LocationToMove - GetActorLocation(), 0.025, false);
+			AddMovementInput(LocationToMove - GetActorLocation(), 0.015, false);
 		}
 	}
 
@@ -387,6 +395,7 @@ void AKingdomsCharacter::HitEnemy()
 void AKingdomsCharacter::RecieveDamage(float DamageToRecieve)
 {
 	CurrentLife -= DamageToRecieve;
+	OnRep_CurrentLife();
 }
 
 #pragma region OnRep Functions

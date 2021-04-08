@@ -6,6 +6,7 @@
 #include "Components/WidgetComponent.h"
 #include "StatusBar.h"
 #include "KingdomsCharacter.h"
+#include "ItemPropertiesClass.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -17,6 +18,9 @@ class KINGDOMS_API ABaseEnemy : public ACharacter
 	GENERATED_BODY()
 	//// Variables ////
 private:
+	// Variable to hold pickable blueprint class
+	TSubclassOf<class APickableItem> PickableBlueprintSpawn;
+
 	// This bool will be readed only locally
 	bool AmISelected;
 
@@ -54,6 +58,9 @@ protected:
 
 	UPROPERTY(BlueprintReadWrite)
 	FVector InitialSpawnLocation;
+
+	UPROPERTY(EditAnywhere)
+	TArray<FS_ItemDrop> ItemsToDrop;
 
 	UStatusBar* StatusWidgetRef;
 
@@ -126,7 +133,7 @@ public:
 
 	void MoveToSpawnDirection();
 
-	void SetCurrentLife(const float LifeToSet) { CurrentLife = (LifeToSet < 0) ? 0 : LifeToSet; }
+	void SetCurrentLife(const float LifeToSet) { CurrentLife = (LifeToSet < 0) ? 0 : LifeToSet; OnRep_CurrentLife(); }
 	FORCEINLINE float GetCurrentLife() { return CurrentLife; }
 	FORCEINLINE float GetCurrentMana() { return CurrentMana; }
 	

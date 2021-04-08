@@ -20,38 +20,6 @@ enum class CharacterClass : uint8
 	Priest = 4 UMETA(DisplayName = "Priest"),
 };
 
-UENUM()
-enum class ItemCategory : uint8 {
-	NotDefined = 0 UMETA(DisplayName = "NotDefined"),
-	Weapon = 1 UMETA(DisplayName = "Weapon"),
-	Shield = 2 UMETA(DisplayName = "Shield"),
-	Helmet = 3 UMETA(DisplayName = "Helmet"),
-	Chest = 4 UMETA(DisplayName = "Chest"),
-	Legs = 5 UMETA(DisplayName = "Legs"),
-	Boots = 6 UMETA(DisplayName = "Boots"),
-	Consumable = 7 UMETA(DisplayName = "Consumable"),
-	Other = 8 UMETA(DisplayName = "Other"),
-};
-
-USTRUCT(BlueprintType)
-struct FS_Item
-{
-	GENERATED_BODY()
-
-	UPROPERTY(BlueprintReadOnly)
-	FString Name;
-
-	UPROPERTY(BlueprintReadOnly)
-	UTexture2D* Icon;
-
-	UPROPERTY(BlueprintReadOnly)
-	ItemCategory Category = ItemCategory::NotDefined;
-
-	UPROPERTY(BlueprintReadOnly)
-	int ItemId = 0;
-};
-
-
 UCLASS()
 class KINGDOMS_API UFunctionLibrary : public UBlueprintFunctionLibrary
 {

@@ -5,6 +5,8 @@
 #include "EnemyAIController.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "PickableItem.h"
+#include "Math/UnrealMathUtility.h"
 
 void ABaseEnemy::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -29,6 +31,10 @@ ABaseEnemy::ABaseEnemy()
 	{
 		StatusWidget->SetWidgetClass(StatusWidgetClass.Class);
 	}
+	static ConstructorHelpers::FObjectFinder<UBlueprint> PickableBlueprint(TEXT("Blueprint'/Game/Inventory/Items/Blueprints/BP_Pickable.BP_Pickable'"));
+	if (PickableBlueprint.Object) {
+		PickableBlueprintSpawn = (UClass*)PickableBlueprint.Object->GeneratedClass;
+	}
 }
 
 // Called when the game starts or when spawned
@@ -38,7 +44,9 @@ void ABaseEnemy::BeginPlay()
 	if (HasAuthority())
 	{
 		CurrentLife = MaxLife;
+		OnRep_CurrentLife();
 		CurrentMana = MaxMana;
+		OnRep_CurrentMana();
 	}
 	StatusWidget->SetRelativeLocation(FVector(0.0f, 0.0f, 110.0f));
 	StatusWidgetRef = Cast< UStatusBar >(StatusWidget->GetUserWidgetObject());
@@ -486,6 +494,37 @@ void ABaseEnemy::CheckShouldDie(AKingdomsCharacter* AgressiveCharacter)
 void ABaseEnemy::Server_DestroyMe_Implementation(AKingdomsCharacter* AgressiveCharacter)
 {
 	AgressiveCharacter->AddExperience(ExperienceValue);
+#pragma region Creating items to spawn
+	if (GetWorld())
+	{
+		// Setting item to drop according to their probability
+		float RandomNumber = FMath::RandRange(0, 100);
+		TArray<int> IndexOfItemsToDrop;
+		if (ItemsToDrop.Num() > 0)
+		{
+			for (int i = ItemsToDrop.Num() - 1; i >= 0; i--)
+			{
+				if (ItemsToDrop[i].ProbabilityToDrop >= RandomNumber / 100)
+				{
+					IndexOfItemsToDrop.Add(i);
+				}
+			}
+			// Sort to get which probability is greater, if there is more than 1 item that can drop
+			Algo::Sort(IndexOfItemsToDrop);
+			int ItemIndex = 0;
+			if (IndexOfItemsToDrop.Num() > 0)
+				ItemIndex = IndexOfItemsToDrop[IndexOfItemsToDrop.Num() > 1 ? IndexOfItemsToDrop.Num() - 1 : 0];
+			FActorSpawnParameters SpawnInfo;
+			
+			APickableItem* PickableToSpawn = GetWorld()->SpawnActor<APickableItem>(PickableBlueprintSpawn, GetActorLocation(), GetActorRotation(), SpawnInfo);
+			if (PickableToSpawn)
+			{
+				PickableToSpawn->SetItemID(ItemsToDrop[ItemIndex].ItemIDToDrop);
+				PickableToSpawn->OnSetId(ItemsToDrop[ItemIndex].ItemIDToDrop);
+			}
+		}
+	}
+#pragma endregion
 	Destroy();
 }
 
