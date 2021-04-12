@@ -2,8 +2,8 @@
 
 #pragma once
 
-#include "Networking.h"
 #include "Net/UnrealNetwork.h"
+#include "WidgetPegavel.h"
 #include "ItemPropertiesClass.h"
 
 #include "CoreMinimal.h"
@@ -19,6 +19,10 @@ class KINGDOMS_API APickableItem : public AActor
 public:
 	UPROPERTY(EditDefaultsOnly)
 	UStaticMeshComponent* MeshComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Widget, meta = (AllowPrivateAccess = "true"))
+	UWidgetComponent* NameWidget;
+
 private:
 	UPROPERTY(ReplicatedUsing = OnRep_ItemID)
 	int ItemID = -1;

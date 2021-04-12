@@ -9,6 +9,7 @@
 #include "Components/WidgetComponent.h"
 #include "StatusBar.h"
 #include "ExperienceBar.h"
+#include "InventoryComponent.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -26,6 +27,9 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Widget, meta = (AllowPrivateAccess = "true"))
 	UWidgetComponent* ExperienceWidget;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Generation, meta = (AllowPrivateAccess = "true"))
+	UInventoryComponent* InventoryComponent;
 
 	//// Variables ////
 private:
